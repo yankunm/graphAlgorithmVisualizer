@@ -16,10 +16,10 @@ class Node {
     this.g = 0;
     this.h = 0;
 
-    this.show = function() {
-      fill(255);
+    this.show = function(color) {
+      fill(color);
       stroke(0);
-      rect(this.x * w, this.y * h, w, h);
+      rect(this.x * w, this.y * h, w - 1, h - 1);
     };
   }
 }
@@ -63,7 +63,7 @@ function draw() {
 function displayGrid() {
   for (let i = 0; i < cols; i++){
     for(let j = 0; j < rows; j++){
-      grid[i][j].show();
+      grid[i][j].show("pink");
     }
   }
 }
