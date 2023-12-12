@@ -1,6 +1,6 @@
 let cols = 50;
 let rows = 50;
-let grid = new Array(cols); // Create a new array with length cols
+let grid;
 
 let openSet = [];
 let closedSet = [];
@@ -10,91 +10,119 @@ let w, h;
 let path = [];
 let current = null;
 
-let bgcolor = 255;
+let bgcolor;
 let pathcolor = "red";
+let wallcolor;
 
-class Node {
-  constructor (i, j) {
-    this.i = i;
-    this.j = j;
-    this.f = 0;
-    this.g = 0;
-    this.h = 0;
-    this.neighbors = [];
-    this.previous = null;
-    this.wall = false;
-
-    if(random(1) < 0.4){
-      this.wall = true;
-    }
-
-    this.show = function(color) {
-      if(this.wall){
-        fill("black");
-        stroke(color);
-        ellipse(this.i * w + w/2, this.j * h + h/2, w/2, h/2);
-      }
-      // }
-      // rect(this.i * w, this.j * h, w - 1, h - 1);
-    };
-
-    this.addNeighbors = function(grid) {
-      let i = this.i;
-      let j = this.j;
-      if(i < cols - 1){
-        this.neighbors.push(grid[i + 1][j]);
-      }
-      if(i > 0) {
-        this.neighbors.push(grid[i - 1][j]);
-      }
-      if(j < rows - 1) {
-        this.neighbors.push(grid[i][j + 1]);
-      }
-      if(j > 0) {
-        this.neighbors.push(grid[i][j - 1]);
-      }
-      if(i > 0 && j > 0){
-        this.neighbors.push(grid[i - 1][j - 1]);
-      }
-      if(i < cols - 1 && j > 0){
-        this.neighbors.push(grid[i + 1][j - 1]);
-      }
-      if(i > 0 && j < rows - 1){
-        this.neighbors.push(grid[i - 1][j + 1]);
-      }
-      if(i < cols - 1 && j < rows - 1){
-        this.neighbors.push(grid[i + 1][j + 1]);
-      }
-    };
-  }
-}
+let wallprobabilitySlider;
+let regenerateGrid = true;
+let AStarRun = false;
 
 // Initialize
 function setup() {
   createCanvas(400, 400);
   console.log('A*');
 
+  // Make wall probability a slider
+  wallprobabilitySlider = createSlider(0, 0.7, 0.2, 0.1);
+  wallprobabilitySlider.position(120, height + 50);
+  wallprobabilitySlider.size(80);
+  
+  let textElement = createP('Wall Density:');
+  textElement.position(10, height + 39);
+
+
   // Fix scaling
   w = width / cols;
   h = height / rows;
 
   // Initialize 2D Array
-  initGrid();
-  initStartingPoint();
-
+  // initGrid();
   // add start to end of openSet
-  openSet.push(start);
+  let button = createButton('Run A*');
+  button.position(0, height + 10);
 
-  // console.log(grid);
-
-
+  // Use the button to change the background color.
+  button.mousePressed(() => {
+    // reset state for A* to run correctly
+    openSet = [];
+    openSet.push(start);
+    closedSet = [];
+    AStarRun = true;
+  });
+  
 }
 
 // Loop
 function draw() {
+  // AStarAlgorithm();
+  if(regenerateGrid){
+    bgcolor = color(random(255), random(255), random(255))
+    wallcolor = color(random(255), random(255), random(255));
+    current = null;
+    // reset state and stop running A* if its running
+    openSet = [];
+    openSet.push(start);
+    closedSet = [];
+    AStarRun = false;
+    initGrid(rows, cols);
+    initStartingPoint();
+    regenerateGrid = false;
+  }
   background(bgcolor);
+  if(AStarRun){
+    AStarAlgorithm();
+  }
+  displayGrid();
+  displayPath(); // Fix this part
+  
+  // I have to add in that AStarAlgorithm could refresh with every click me, and that display Path and display the path when path is not empty
+}
 
+function mousePressed(){
+  if(mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height){
+    regenerateGrid = true;
+  }
+}
+
+function initGrid(rows, cols) {
+  wallprobability = wallprobabilitySlider.value();
+  grid = new Array(cols);
+  // console.log(grid);
+  // Initialize each row filled with nodes
+  for(let i = 0; i < cols; i++){
+    grid[i] = new Array(rows);
+    for(let j = 0; j < rows; j++){
+      grid[i][j] = new Node(i, j);
+    }
+  }
+
+  // Initialize neighbors for each node
+  for(let i = 0; i < cols; i++){
+    for(let j = 0; j < rows; j++){
+      grid[i][j].addNeighbors(grid);
+    }
+  }
+}
+
+function displayGrid(){
+  for (let i = 0; i < cols; i++){
+    for(let j = 0; j < rows; j++){
+      grid[i][j].show(wallcolor);
+    }
+  }
+  // for (let i = 0; i < closedSet.length; i++){
+  //   closedSet[i].show(color(255, 0, 0)); // Closed Set Nodes are Red
+  // }
+  // for (let i = 0; i < openSet.length; i++){
+  //   openSet[i].show(color(0, 255, 0)); // Open Set Nodes are Green
+  // }
+}
+
+
+function AStarAlgorithm() {
   // while openSet is not empty
+  // reinitialize openSet
   if (openSet.length > 0) {
 
     // Find  winner in openSet = one with the lowest f score
@@ -108,7 +136,7 @@ function draw() {
 
     // Where we are done
     if (current === end){
-      noLoop();
+      AStarRun = false;
       console.log("DONE!");
     }
 
@@ -144,67 +172,35 @@ function draw() {
   } else {
     // no solution
     console.log("no solution");
-    noLoop();
+    AStarRun = false;
   }
-  displayGrid();
-  displayPath();
 }
 
 // Calls the show function at each node in grid
-function displayGrid() {
-  for (let i = 0; i < cols; i++){
-    for(let j = 0; j < rows; j++){
-      grid[i][j].show("black");
-    }
-  }
-  for (let i = 0; i < closedSet.length; i++){
-    closedSet[i].show(color(255, 0, 0)); // Closed Set Nodes are Red
-  }
-  for (let i = 0; i < openSet.length; i++){
-    openSet[i].show(color(0, 255, 0)); // Open Set Nodes are Green
-  }
-  
-}
-
 function displayPath() {
   // Find the path
   path = [];
-  let temp = current;
-  path.push(temp);
-  while(temp.previous){
-    path.push(temp.previous);
-    temp = temp.previous;
-  }
-  // for (let i = 0; i < path.length; i++){
-  //   path[i].show(color(0, 0, 255)); // Path Nodes are Blue
-  // }
-
-  noFill();
-  stroke(pathcolor);
-  strokeWeight(w/2);
-  beginShape();
-  for(let i = 0; i < path.length; i++){
-    vertex(path[i].i * w + w/2, path[i].j * h + h/2);
-  }
-  endShape();
-
-}
-
-function initGrid() {
-  // Initialize each row filled with nodes
-  for(let i = 0; i < cols; i++){
-    grid[i] = new Array(rows);
-    for(let j = 0; j < rows; j++){
-      grid[i][j] = new Node(i, j);
+  if(current != null){
+    let temp = current;
+    path.push(temp);
+    while(temp.previous){
+      path.push(temp.previous);
+      temp = temp.previous;
     }
+    // for (let i = 0; i < path.length; i++){
+    //   path[i].show(color(0, 0, 255)); // Path Nodes are Blue
+    // }
+
+    noFill();
+    stroke(pathcolor);
+    strokeWeight(w/2);
+    beginShape();
+    for(let i = 0; i < path.length; i++){
+      vertex(path[i].i * w + w/2, path[i].j * h + h/2);
+    }
+    endShape();
   }
 
-  // Initialize neighbors for each node
-  for(let i = 0; i < cols; i++){
-    for(let j = 0; j < rows; j++){
-      grid[i][j].addNeighbors(grid);
-    }
-  }
 }
 
 function initStartingPoint() {
@@ -225,4 +221,63 @@ function removeFromArray(arr, elt) {
 function heuristic(a, b){
   let d = abs(a.i - b.i) + abs(a.j - b.j);
   return d;
+}
+
+class Node {
+  constructor (i, j) {
+    this.i = i;
+    this.j = j;
+    this.f = 0;
+    this.g = 0;
+    this.h = 0;
+    this.neighbors = [];
+    this.previous = null;
+    this.wall = false;
+
+    if(random(1) < wallprobability){
+      this.wall = true;
+    }
+
+    this.show = function(color) {
+      if(this.wall){
+        fill(wallcolor);
+        stroke(color);
+        rect(this.i * w, this.j * h, w - 1, h - 1);
+        // ellipse(this.i * w + w/2, this.j * h + h/2, w/2, h/2);
+      }
+      // }
+      // fill(color);
+      // rect(this.i * w, this.j * h, w - 1, h - 1);
+    };
+
+    this.addNeighbors = function(grid) {
+      let i = this.i;
+      let j = this.j;
+      if(i < cols - 1){
+        this.neighbors.push(grid[i + 1][j]);
+      }
+      if(i > 0) {
+        this.neighbors.push(grid[i - 1][j]);
+      }
+      if(j < rows - 1) {
+        this.neighbors.push(grid[i][j + 1]);
+      }
+      if(j > 0) {
+        this.neighbors.push(grid[i][j - 1]);
+      }
+      // // diagonal
+      // if(i > 0 && j > 0){
+      //   this.neighbors.push(grid[i - 1][j - 1]);
+      // }
+      // if(i < cols - 1 && j > 0){
+      //   this.neighbors.push(grid[i + 1][j - 1]);
+      // }
+      // if(i > 0 && j < rows - 1){
+      //   this.neighbors.push(grid[i - 1][j + 1]);
+      // }
+      // if(i < cols - 1 && j < rows - 1){
+      //   this.neighbors.push(grid[i + 1][j + 1]);
+      // }
+    };
+  }
 }
