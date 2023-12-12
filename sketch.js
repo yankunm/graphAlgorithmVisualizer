@@ -10,6 +10,9 @@ let w, h;
 let path = [];
 let current = null;
 
+let isHovered = false;
+let button;
+
 let bgcolor;
 let pathcolor = "red";
 let wallcolor;
@@ -20,37 +23,9 @@ let AStarRun = false;
 
 // Initialize
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(windowWidth, windowHeight - 100);
   console.log('A*');
-
-  // Make wall probability a slider
-  wallprobabilitySlider = createSlider(0, 0.7, 0.2, 0.1);
-  wallprobabilitySlider.position(120, height + 50);
-  wallprobabilitySlider.size(80);
-  
-  let textElement = createP('Wall Density:');
-  textElement.position(10, height + 39);
-
-
-  // Fix scaling
-  w = width / cols;
-  h = height / rows;
-
-  // Initialize 2D Array
-  // initGrid();
-  // add start to end of openSet
-  let button = createButton('Run A*');
-  button.position(0, height + 10);
-
-  // Use the button to change the background color.
-  button.mousePressed(() => {
-    // reset state for A* to run correctly
-    openSet = [];
-    openSet.push(start);
-    closedSet = [];
-    AStarRun = true;
-  });
-  
+  initControlPanel();  
 }
 
 // Loop
@@ -75,7 +50,6 @@ function draw() {
   }
   displayGrid();
   displayPath(); // Fix this part
-  
   // I have to add in that AStarAlgorithm could refresh with every click me, and that display Path and display the path when path is not empty
 }
 
@@ -86,6 +60,9 @@ function mousePressed(){
 }
 
 function initGrid(rows, cols) {
+  // Fix scaling
+  w = width / cols;
+  h = height / rows;
   wallprobability = wallprobabilitySlider.value();
   grid = new Array(cols);
   // console.log(grid);
@@ -103,6 +80,17 @@ function initGrid(rows, cols) {
       grid[i][j].addNeighbors(grid);
     }
   }
+}
+
+function initControlPanel() {
+  initButton();
+  // Make wall probability a slider
+  wallprobabilitySlider = createSlider(0, 0.7, 0.2, 0.1);
+  wallprobabilitySlider.position(120, height + 60);
+  wallprobabilitySlider.size(80);
+  
+  let textElement = createP('Wall Density:');
+  textElement.position(10, height + 49);
 }
 
 function displayGrid(){
@@ -191,14 +179,16 @@ function displayPath() {
     //   path[i].show(color(0, 0, 255)); // Path Nodes are Blue
     // }
 
+    push();
     noFill();
     stroke(pathcolor);
-    strokeWeight(w/2);
+    strokeWeight(w);
     beginShape();
     for(let i = 0; i < path.length; i++){
       vertex(path[i].i * w + w/2, path[i].j * h + h/2);
     }
     endShape();
+    pop();
   }
 
 }
@@ -221,6 +211,31 @@ function removeFromArray(arr, elt) {
 function heuristic(a, b){
   let d = abs(a.i - b.i) + abs(a.j - b.j);
   return d;
+}
+
+function initButton(){
+  button = createButton('Run A*');
+  button.position(0, height + 10);
+  
+  button.style('background-color', 'red'); // Set background color
+  button.style('color', 'white'); // Set text color
+  button.style('padding', '10px 20px'); // Set padding
+  button.style('font-size', '16px'); // Set font size
+  button.style('font-family', 'Arial, sans-serif'); // Set font family
+  button.style('border', 'none'); // Remove border
+  button.style('border-radius', '5px'); // Add border radius
+  // Set up mouseOver and mouseOut events for the button
+  button.mouseOver(onHover);
+  button.mouseOut(onHoverOut);
+
+  // Use the button to change the background color.
+  button.mousePressed(() => {
+    // reset state for A* to run correctly
+    openSet = [];
+    openSet.push(start);
+    closedSet = [];
+    AStarRun = true;
+  });
 }
 
 class Node {
@@ -280,4 +295,19 @@ class Node {
       // }
     };
   }
+}
+
+// Function to be called when the button is hovered over
+function onHover() {
+  button.style('background-color', '#ff5733'); // Set hover background color
+  isHovered = true;
+}
+
+// Function to be called when the mouse is not over the button
+function onHoverOut() {
+  if (!isHovered) {
+    button.style('background-color', '#4CAF50'); // Set initial background color
+  }
+  button.style('background-color', 'red'); // Set background color
+  isHovered = false;
 }
