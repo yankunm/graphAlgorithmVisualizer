@@ -14,7 +14,10 @@ let current = null;
 
 let isHovered = false;
 let button;
+let bfsButton;
 let gridButton;
+
+let timeElement;
 
 let bgcolor;
 let pathcolor = "red";
@@ -23,6 +26,7 @@ let wallcolor;
 let wallprobabilitySlider;
 let regenerateGrid = true;
 let AStarRun = false;
+let bfsRun = false;
 
 // Beginning and End Points Initialization Indicators
 let startIsSet = false;
@@ -32,14 +36,20 @@ let reset = false;
 
 let clickNumber = 1;
 
+let currentTime;
+let timeCheck;
+
+
 // Initialize
 function setup() {
   createCanvas((windowHeight - 100) * 1.2, windowHeight - 100);
-  initControlPanel();  
+  initControlPanel();
 }
 
 // Loop
 function draw() {
+  currentTime = millis() * 0.001;
+  // console.log(currentTime);
   // Grid Refresh:
   // regenerateGrid is true everytime user clicks on screen
   // goal is to regenerate a grid and refresh everything
@@ -55,6 +65,7 @@ function draw() {
     openSet.push(start);
     closedSet = [];
     AStarRun = false;
+    bfsRun = false;
     initGrid(rows, cols);
     regenerateGrid = false;
     clickNumber = 1;
@@ -62,6 +73,7 @@ function draw() {
     endIsSet = false;
     reset = false;
     printStatus("Select Starting Point");
+    printTime("");
   }
   if(reset){
     // reset state and stop running A* if its running
@@ -70,6 +82,7 @@ function draw() {
     openSet.push(start);
     closedSet = [];
     AStarRun = false;
+    bfsRun = false;
     if(start != null) {
       start.start = false;
     }
@@ -82,6 +95,7 @@ function draw() {
     endIsSet = false;
     reset = false;
     printStatus("Select Starting Point");
+    printTime("");
   }
   // Draws Background AFTER bgcolor is set to some new color everytime
   // Grid is refreshed
@@ -99,8 +113,12 @@ function draw() {
     if(AStarRun){
       AStarAlgorithm();
     }
+    if(bfsRun){
+      bfsAlgorithm();
+    }
   } else {
     AStarRun = false;
+    bfsRun = false;
   }
   // Always display grid and display path if there is a path to
   // display, this is determined by whether "current" is null or not!
@@ -137,6 +155,7 @@ function initGrid(rows, cols) {
 
 function initControlPanel() {
   initButton();
+  initBFSButton();
   initGridButton();
   initResetButton();
   // Make wall probability a slider
@@ -145,21 +164,61 @@ function initControlPanel() {
   wallprobabilitySlider.size(80);
   
   status = createP("Select Starting Point");
-  status.position(width - 150, height);
+  status.position(width - 150, height-10);
   
   let textElement = createP('Wall Density:');
   textElement.position(10, height + 49);
   
   let statusElement = createP('Status:');
-  statusElement.position(width - 200, height);
+  statusElement.position(width - 200, height-10);
 }
 
 // ________________ALGORITHMS________________________
+
+function bfsAlgorithm() {
+  // while openSet is not empty
+  // reinitialize openSet
+  printStatus("BFS is Running");
+  printTime("Time: " + (currentTime - timeCheck).toFixed(3) + " seconds");
+  // console.log(timeCheck);
+  if (openSet.length > 0) {
+
+    // Get the next one
+    current = openSet.shift();
+
+    // Where we are done
+    if (current === end){
+      bfsRun = false;
+      printStatus("Target Reached!!");
+    }
+
+    closedSet.push(current);
+    let neighbors = current.neighbors;
+    // for each neighbor
+    for(let i = 0; i < neighbors.length; i++){
+      let neighbor = neighbors[i];
+      if(!closedSet.includes(neighbor) && !neighbor.wall){
+        if(!openSet.includes(neighbor)){
+          openSet.push(neighbor);
+        }
+        neighbor.previous = current;
+      }
+    }
+
+  } else {
+    // no solution
+    printStatus("No Solution");
+    bfsRun = false;
+  }
+}
+
 
 function AStarAlgorithm() {
   // while openSet is not empty
   // reinitialize openSet
   printStatus("A* is Running");
+  printTime("Time: " + (currentTime - timeCheck).toFixed(3) + " seconds");
+  // console.log(timeCheck);
   if (openSet.length > 0) {
 
     // Find  winner in openSet = one with the lowest f score
@@ -265,7 +324,13 @@ function displayPath() {
 function printStatus(text) {
   if(status) status.remove();
   status = createP(text);
-  status.position(width - 150, height);
+  status.position(width - 150, height-10);
+}
+
+function printTime(time){
+  if(timeElement) timeElement.remove();
+  timeElement = createP(time);
+  timeElement.position(width - 200, height + 10);
 }
 
 // ________________BUTTONS_________________________
@@ -292,6 +357,37 @@ function initButton(){
     openSet.push(start);
     closedSet = [];
     AStarRun = true;
+    timeCheck = currentTime;
+    // All other algorithms needs to stop running
+    bfsRun = false;
+  });
+}
+
+function initBFSButton(){
+  bfsButton = createButton('Run BFS');
+  bfsButton.position(110, height + 10);
+  
+  bfsButton.style('background-color', 'red'); // Set background color
+  bfsButton.style('color', 'white'); // Set text color
+  bfsButton.style('padding', '10px 20px'); // Set padding
+  bfsButton.style('font-size', '16px'); // Set font size
+  bfsButton.style('font-family', 'Arial, sans-serif'); // Set font family
+  bfsButton.style('border', 'none'); // Remove border
+  bfsButton.style('border-radius', '5px'); // Add border radius
+  // Set up mouseOver and mouseOut events for the button
+  bfsButton.mouseOver(onHoverBFS);
+  bfsButton.mouseOut(onHoverOutBFS);
+
+  // Use the button to change the background color.
+  bfsButton.mousePressed(() => {
+    // reset state for A* to run correctly
+    openSet = [];
+    openSet.push(start);
+    closedSet = [];
+    bfsRun = true;
+    timeCheck = currentTime;
+    // All other algorithms needs to stop running
+    AStarRun = false;
   });
 }
 
@@ -377,6 +473,21 @@ function onHoverOut() {
   button.style('background-color', 'red'); // Set background color
   isHovered = false;
 }
+
+// Functions to be called when the Run A* button is hovered over
+function onHoverBFS() {
+  bfsButton.style('background-color', '#ff5733'); // Set hover background color
+  isHovered = true;
+}
+
+function onHoverOutBFS() {
+  if (!isHovered) {
+    bfsButton.style('background-color', 'red'); // Set initial background color
+  }
+  bfsButton.style('background-color', 'red'); // Set background color
+  isHovered = false;
+}
+
 
 // Functions to be called when the Grid button is hovered over
 function onHoverGB() {
